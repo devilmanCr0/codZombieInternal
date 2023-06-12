@@ -40,12 +40,26 @@ namespace hackToggles
 {
     bool bGod{ false };
     bool bGodRunOnce{ true };
+
+    //Currently Broken
     bool bRapidfire{ false };
     bool bRapidfireRunOnce{ true };
+
+    //Currently Partially Broken
     bool bESP{ false };
+
+    //Currently Shit
     bool bAimbot{ false };
+
+    bool bTriggerBot{ false };
+
     bool bMoney{ false };
+
     bool bShutdown{ false };
+
+    bool bAimbotRunOnce{ false };
+   
+
 
     //part of ent List *singleplayer
     bool bFreezeZombies{ false };
@@ -71,6 +85,43 @@ PlayerMovement* getPlayerMovement()
     return (PlayerMovement*)((uintptr_t)signatures::localPlayerMovement);
 }
 
+//ZombieZ* getZombieTrigger(PlayerMovement* player)
+ZombieZ* getZombieTrigger()
+{
+    //Replicated with IDA, uses this as a lookup to see what 
+    //Entity you're looking at
+    //PLayerMovement+1C80
+    //module+16794EC
+    uintptr_t* firstBase = (uintptr_t*)*(uintptr_t*)(0x1A794EC + (*((short int*)0x1C0A7C0) * 0x34C));
+
+    if (firstBase)
+    {
+        return (ZombieZ*)*firstBase;
+    }
+    return 0x0;
+}
+
+bool isValidZombie(ZombieZ* zombie)
+{
+    if (!zombie)
+    {
+        return false;
+    }
+
+    if (!((zombie->ZombID > 400) && (zombie->ZombID < 800)))
+    {
+        return false;
+    }
+
+    if (zombie->Health <= 0)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
 ZombieZ* getClosestZombie(uintptr_t moduleAddy)
 {
     Vector3 localPlayerPos = getPlayerMovement()->playerPosition;
@@ -81,17 +132,7 @@ ZombieZ* getClosestZombie(uintptr_t moduleAddy)
     {
         ZombieZ* zombie = getZombie(i);
 
-        if (!zombie)
-        {
-            continue;
-        }
-
-        if (!((zombie->ZombID > 600) && (zombie->ZombID < 800)))
-        {
-            continue;
-        }
-
-        if (zombie->Health <= 0)
+        if (!isValidZombie(zombie))
         {
             continue;
         }
@@ -112,13 +153,20 @@ ZombieZ* getClosestZombie(uintptr_t moduleAddy)
     return getZombie(closestDistanceIndex);
 }
 
-void aimAt(PlayerMovement* localPlayer, ZombieZ* zombie, Vector2* localAngle)
+void aimAt(PlayerMovement* localPlayer, ZombieZ* zombie, Vector2* localAngle, float offsetOne, float offsetTwo)
 {
     Vector3 playerPos = localPlayer->playerPosition;
     Vector3 zombiePos = zombie->ZombPosition;
 
     Vector3 deltaVec = { zombiePos.x - playerPos.x ,  zombiePos.y - playerPos.y , zombiePos.z - playerPos.z };
        
+    //Yep, this means its an imp bastard, shoot it at a lower angle
+    if (zombie->Distinguish == 24)
+    {
+        deltaVec.z -= 25;
+    }
+
+
     float deltaVecLength = sqrt(deltaVec.x * deltaVec.x + deltaVec.y * deltaVec.y + deltaVec.z * deltaVec.z);
 
     float pitch = -asin(deltaVec.z / deltaVecLength) * (180 / PI);
@@ -128,12 +176,32 @@ void aimAt(PlayerMovement* localPlayer, ZombieZ* zombie, Vector2* localAngle)
     {
         //my calculations are correct, we just cant find the right values to modify
         //find the correct initial length
-        float difference = 61.4;
+        //float difference = 61.4;
+
+        //Because for some reason we have values that can overflow infinitely, we need 
+        //to accomadate it using an offset from its current initial value and 
 
 
-        localAngle->x = pitch+2;
-        localAngle->y = (yaw-difference);
+        //Gooning
+        localAngle->x = (pitch+2)+offsetOne;
+        localAngle->y = (yaw+offsetTwo);
     }
+}
+
+void triggerShoot()
+{
+    ZombieZ* zombie = getZombieTrigger();
+    if (isValidZombie(zombie))
+    {
+        //BlackOps.exe + 24D9230
+        int i = 0;
+        while (i < 10000)
+        {
+            *((int*)0x028D9230) = 1;
+            i++;
+        }
+    }
+    *((int*)0x028D9230) = 0;
 }
 
 void Draw()
@@ -145,20 +213,10 @@ void Draw()
         {
            ZombieZ* zombie = getZombie(i);
 
-            if (!zombie)
-            {
+           if (!isValidZombie(zombie))
+           {
                continue;
-            }
-
-            if (!((zombie->ZombID > 600) && (zombie->ZombID < 800)))
-            {
-                continue;
-            }
-
-            if (zombie->Health <= 0)
-            {
-                continue;
-            }
+           }
 
             
 
@@ -167,8 +225,12 @@ void Draw()
             //center.z = adjustment
             float* projectionMatrix = (float*)((uintptr_t)moduleAddy + signatures::ClientState::graphicSettings + signatures::ClientState::projectionMatrix);
 
+            //Resolution
+            int ResolutionX = *(int*)0x0BA6960;
+            int ResolutionY = *(int*)0x0BA6964;
+
             Vector3 screen;
-            if (DrawingDevice->WorldToScreen(center, screen, projectionMatrix , 800, 600))
+            if (DrawingDevice->WorldToScreen(center, screen, projectionMatrix , ResolutionX, ResolutionY))
             {
                 DrawingDevice->DrawESP(getPlayerMovement(), zombie, screen);
             }
@@ -210,14 +272,20 @@ DWORD WINAPI BOZomb(HMODULE hModule)
     DrawingDevice = new DXD::Draw(d3d9Device, sizeof(d3d9Device), truth) ;
     moduleAddy =  (uintptr_t)GetModuleHandle(L"BlackOps.exe") ;
 
-    std::cout << "Hello, welcome to the cum zone" << std::endl;
+    std::cout << "Hello, welcome to the spludge zone" << std::endl;
+
     std::cout << "I for God\n";
     std::cout << "O for Rapid Fire\n";
-    std::cout << "J for ESP\n";
+    std::cout << "J for ESP - BAD\n";
     std::cout << "K for aimbot";
     std::cout << "N for money\n";
-    std::cout << "M for freeze zombies\n";
-    std::cout << "P for kill all\n";
+    std::cout << "M for freeze zombies - SUPER BROKEN\n";
+    std::cout << "P for kill all - BROKEN\n ";
+    std::cout << "L for Trigger Bot\n";
+
+    //BlackOps.exe+24D9230
+    //Set to 1 to fire, 0 otherwise
+
 
     if (truth)
     {
@@ -245,6 +313,7 @@ DWORD WINAPI BOZomb(HMODULE hModule)
                 hackToggles::bESP = false;
                 hackToggles::bAimbot = false;
                 hackToggles::bMoney=  false;
+              
             }
          
         }
@@ -290,6 +359,12 @@ DWORD WINAPI BOZomb(HMODULE hModule)
         if (GetAsyncKeyState(0x50) & 1)
         {
             hackToggles::bKillAll = !hackToggles::bKillAll;
+        }
+
+        // L
+        if (GetAsyncKeyState(0x4C) & 1)
+        { 
+            hackToggles::bTriggerBot = !hackToggles::bTriggerBot;
         }
 
         if (hackToggles::bGod)
@@ -358,16 +433,39 @@ DWORD WINAPI BOZomb(HMODULE hModule)
 
         if (hackToggles::bAimbot)
         {
+
+            
+
             ZombieZ* closestZombie = getClosestZombie(moduleAddy);
             if (closestZombie)
             {
                 PlayerMovement* localplayer = getPlayerMovement();
                 Vector2* localplayerAngle = (Vector2*)(moduleAddy + signatures::ClientState::yawpitchAddress);
-                aimAt(localplayer, closestZombie, localplayerAngle);
+
+                static float offsetOne = localplayerAngle->x - localplayer->pitchYaw.x;
+                static float offsetTwo = localplayerAngle->y - localplayer->pitchYaw.y;
+                if (hackToggles::bAimbotRunOnce)
+                {
+                    offsetOne = localplayerAngle->x - localplayer->pitchYaw.x;
+                    offsetTwo = localplayerAngle->y - localplayer->pitchYaw.y;
+
+                    hackToggles::bAimbotRunOnce = false;
+                }
+
+                aimAt(localplayer, closestZombie, localplayerAngle, offsetOne, offsetTwo);
             }
 
 
         }
+        else {
+            hackToggles::bAimbotRunOnce = true;
+        }
+
+        if (hackToggles::bTriggerBot)
+        {
+            triggerShoot();
+        }
+
 
         if (hackToggles::bFreezeZombies)
         {

@@ -41,7 +41,7 @@ bool detourHook(void* toHook, void* ourFunction, int size)
 	the address to hook -
 	jmp (additional 5 bytes)
 	/\
-	 |   then - 5 to really  get to the addres sof the hook hey
+	 |   then - 5 t oreally  get to the addres sof the hook hey stfuuu
 	 |
 	\/
 	the function  address

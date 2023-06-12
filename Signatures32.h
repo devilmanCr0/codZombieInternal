@@ -52,6 +52,7 @@ public:
 		DEFINE_MEMBER_N(int32_t, secondprimary, 0x358);
 		DEFINE_MEMBER_N(int32_t, gunID, 0x3BC);
 		DEFINE_MEMBER_N(int32_t, primaryAmmo, 0x3C0);
+		DEFINE_MEMBER_N(uintptr_t, offSettedZombie, 0x1C80);
 	};
 
 };
@@ -66,12 +67,14 @@ public:
 		DEFINE_MEMBER_N(int8_t, CurrentState, 0x6);
 		DEFINE_MEMBER_N(Vector3, ZombPosition, 0x18);
 		DEFINE_MEMBER_N(float, AxisDirection, 0x40);
+		DEFINE_MEMBER_N(float, Distinguish, 0xFC);
 		DEFINE_MEMBER_N(int32_t, Health, 0x184);
 		DEFINE_MEMBER_N(int32_t, MaxHealth, 0x188);
+		
 	};
 
 };
-
+//1A794EC
 namespace signatures
 {
 	constexpr uintptr_t entityZombieList = 0x1BFBC84;
@@ -89,7 +92,7 @@ namespace signatures
 		constexpr uintptr_t projectionMatrix = 0xC4;
 	}	
 }
-
+//original projection matrix offset - 0xC4
 
 //original god bytes \0x29\0xF8\x89\x85\x84\x04\x00\x00
 //edited god bytes \\x83
